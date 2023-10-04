@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# cpx command is extremely useful in copying thousands of files and track the progress
+# just do cpx source destination and you are good to go!
+
+
+# Convert seconds to DD:HH:MM:SS format
+convert_to_human_readable() {
+    local total_seconds=$1
+    local days=$((total_seconds/86400))
+    local hours=$(( (total_seconds%86400) / 3600 ))
+    local minutes=$(( (total_seconds%3600) / 60 ))
+    local seconds=$((total_seconds%60))
+
+    # If days are zero, omit them
+    if [ $days -eq 0 ]; then
+        printf "%02d:%02d:%02d" $hours $minutes $seconds
+    else
+        printf "%02d:%02d:%02d:%02d" $days $hours $minutes $seconds
+    fi
+}
+
+
+
+src=$(realpath "$1")
+dest=$(realpath "$2")
+
+# Start the cp command in the background
+cp -r "$src" "$dest" &
+# rsync -a "$src/" "$dest/" &
+
+# Capture the process ID of the cp command
+cp_pid=$!
+
+# Define a function to kill the cp process
+cleanup() {
+    kill -s SIGTERM $cp_pid 2>/dev/null
+    exit 1
+}
+
+# Use trap to call cleanup when the script exits
+trap cleanup EXIT INT
+
+# Get the initial count of files in the destination (before starting/resuming copy)
+dest_folder=$(basename "$src")
+dest="$dest/$dest_folder"
+
+# Calculate the total number of files to be copied
+total=$(find "$src" -type f | wc -l)
+cur=$(find "$dest" -type f | wc -l)
+
+# Record the start time
+start_time=$(date +%s)
+
+while [ $cur -lt $total ]
+do
+    # Count the number of files currently in the destination directory
+    cur=$(find "$dest" -type f | wc -l)
+
+    percent=$((cur * 100 / total))
+
+    elapsed_time=$(($(date +%s) - start_time))
+    human_readable_elapsed=$(convert_to_human_readable $elapsed_time)
+    human_readable_estimated=$(convert_to_human_readable $estimated_time_remaining)
+
+    # Construct progress bar
+    bar="["
+    bar="${bar}$(printf "%-*s" "$percent" '' | tr ' ' '#')"
+    bar="${bar}$(printf "%*s%3d%% " $((100-percent)) "]" "$percent")"
+
+    # Print progress bar, additional information, and estimated time remaining
+    printf "\r Current: %d Total: %d %s [%s/%s]" "$cur" "$total" "$bar" "$human_readable_elapsed" "$human_readable_estimated"
+
+    sleep 1  # Wait for a second before checking again
+done
+
+echo  # Move to the next line after loop completion
