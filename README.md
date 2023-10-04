@@ -18,5 +18,5 @@ Example:
 # sample output
 <pre>
 cpx ~/source .                                                                          
-     Current: 281 Total: 4112 [######                                                 ]  6%  [00:05:52/00:00:00]
+Current: 281 Total: 4112 [######                                                 ]  6%  [00:05:52/00:00:00]
 </pre>
